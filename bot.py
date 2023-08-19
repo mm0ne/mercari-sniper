@@ -15,31 +15,40 @@ load_dotenv()
 # Supabase Configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_TABLE = os.getenv('SUPABASE_TABLE')
+SUPABASE_TABLE_CD = os.getenv('SUPABASE_TABLE_CD')
+SUPABASE_TABLE_BOOK = os.getenv('SUPABASE_TABLE_BOOK')
 
-# Website URL to Scrape
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+USER_ID = int(os.getenv("USER_ID"))
+BOOK_CHANNEL_ID = int(os.getenv("BOOK_CHANNEL_ID"))
+CD_CHANNEL_ID = int(os.getenv("CD_CHANNEL_ID"))
+BOOK_KEYWORDS = os.getenv("BOOK_KEYWORDS")
+CD_KEYWORDS = os.getenv("CD_KEYWORDS")
+CD_AND_BOOK_CATEGORY_ID = os.getenv("CD_AND_BOOK_CATEGORY_ID")
+CD_KEYWORDS = CD_KEYWORDS.split(",")
+BOOK_KEYWORDS = BOOK_KEYWORDS.split(",")
+
 WEBSITE_URL = 'https://jp.mercari.com'
-KEYWORDS = ["あすぱら画集"] #"吉田誠治作品集&パース徹底テクニック"]
 NUMBER_CLASS = "number__6b270ca7"
 ITEM_NAME_CLASS = "itemName__a6f874a2"
 IMAGE_CLASS = "imageContainer__f8ddf3a2"
 PRODUCT_LINK_CLASS = "sc-bb7da013-2 eFiPDm"
 SOLD_BANNER_CLASS = "sticker__a6f874a2"
 LI_CLASS = 'sc-bb7da013-1 bATOfv'
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-USER_ID = int(os.getenv("USER_ID"))
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 # Initialize Discord Bot
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix="!!")
 
-# Initialize Supabase Client
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def print_keywords(keywords) -> None:
+    print("\nscraping with these keywords :")
+    print(keywords)
 
 def initialize_database():
    
-    q = supabase.table(SUPABASE_TABLE).select().limit(1).execute()
-
+    q = supabase.table(SUPABASE_TABLE_CD).select().limit(1).execute()
+    r = supabase.table(SUPABASE_TABLE_BOOK).select().limit(1).execute()
     ### current supabase-py doesn't support DDL sql for table.
     ### You have to manually create the table in public schema
 
@@ -54,11 +63,13 @@ def initialize_database():
     #     print("Successfully created new table\n")
 
 
-def construct_url(keyword):
-    return f"{WEBSITE_URL}/search?keyword={keyword}&order=desc&sort=created_time"
+def construct_url(keyword, category_id=None) -> str:
+    if category_id is None:
+        return f"{WEBSITE_URL}/search?keyword={keyword}&order=desc&sort=created_time"
+    else:
+        return f"{WEBSITE_URL}/search?keyword={keyword}&order=desc&sort=created_time&category_id={category_id}"
 
-def init_web_driver():
-
+def init_web_driver() -> webdriver.Chrome.__class__:
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument("--window-size=1920,1080")
@@ -77,14 +88,14 @@ def scrape(driver, url_payload) -> None:
         EC.presence_of_all_elements_located((By.CLASS_NAME, IMAGE_CLASS))
     )
     
-def parse_new_data(soup) -> list:
+def parse_new_data(soup, table_name : str) -> list:
     # Extract the data you need
     item_data = soup.find_all('li', class_=LI_CLASS)
     item_names = soup.find_all("span", class_=ITEM_NAME_CLASS)
     wrangled_data = []
-    old_data = get_all_data_from_database()
+    old_data = get_all_data_from_database(table_name)
 
-    for index, item in enumerate(item_data):
+    for index, item in enumerate(item_data[::-1]):
         product_link = item.find("a", class_=PRODUCT_LINK_CLASS)
         product_link = WEBSITE_URL + product_link.get("href", "#")
 
@@ -101,20 +112,20 @@ def parse_new_data(soup) -> list:
         product_status = item.find("div", class_=SOLD_BANNER_CLASS)
 
         if product_status is None:
-            data = add_new_data_to_database(product_link, product_image, product_name, product_price)
+            data = add_new_data_to_database(table_name, product_link, product_image, product_name, product_price)
             wrangled_data.append(data)
 
     return wrangled_data
         
-def get_all_data_from_database():
-    response = supabase.table(SUPABASE_TABLE).select().execute()
+def get_all_data_from_database(table_name) -> list:
+    response = supabase.table(table_name).select().execute()
     if response.get("status_code", 404) == 200:
         data = response.get("data", [])
         return data
     else:
         return []
 
-def add_new_data_to_database(link: str, image: str, name: str, price: int) -> dict or None:
+def add_new_data_to_database(table_name : str, link: str, image: str, name: str, price: int) -> dict or None:
     data = {
         "link": link,
         "image": image,
@@ -122,14 +133,14 @@ def add_new_data_to_database(link: str, image: str, name: str, price: int) -> di
         "price": price,
     }
 
-    response = supabase.table(SUPABASE_TABLE).insert(data).execute()
+    response = supabase.table(table_name).insert(data).execute()
     response_data = response.get("data", [])
     if len(response_data) > 0:
         return response_data[0]  # Returns the inserted/updated data
     else:
         return None
 
-def item_already_exists(link, old_items):
+def item_already_exists(link, old_items) -> bool:
     exists = False
     for old_item in old_items:
         if old_item.get("link", "#") == link:
@@ -154,26 +165,35 @@ async def notify_new_item(channel_id, items) -> None:
             await channel.send(f"{user_mention} **New item!!**", embed=embed)
 
 
-@tasks.loop(minutes=5)  # Run every 30 minutes
+@tasks.loop(minutes=15)  # Run every 30 minutes
 async def snipe():
 
     # Initialize headless browser
     driver = init_web_driver()
     print("\n=========================  browser has been set!  =========================\n")
     
-    for key in KEYWORDS:
+    print_keywords(BOOK_KEYWORDS)
+    for key in BOOK_KEYWORDS:
         # Load the website
         url_payload = construct_url(key)
         print(f"\nscraping with '{url_payload}' as payload\n")
-
         scrape(driver, url_payload)
-
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        
-        data = parse_new_data(soup)
-        await notify_new_item(channel_id=CHANNEL_ID, items=data)
+        data = parse_new_data(soup, SUPABASE_TABLE_BOOK)
+        await notify_new_item(channel_id=BOOK_CHANNEL_ID, items=data)
+    
+    print_keywords(CD_KEYWORDS)
+    for key in CD_KEYWORDS:
+        # Load the website
+        url_payload = construct_url(keyword=key, category_id=CD_AND_BOOK_CATEGORY_ID)
+        print(f"\nscraping with '{url_payload}' as payload\n")
+        scrape(driver, url_payload)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        data = parse_new_data(soup, SUPABASE_TABLE_CD)
+        await notify_new_item(channel_id=CD_CHANNEL_ID, items=data)
 
-    driver.quit()  # Make sure to close the WebDriver at the end
+    # close the browser
+    driver.quit()
     
 
 @bot.event
