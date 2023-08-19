@@ -1,5 +1,5 @@
 from discord.ext import tasks, commands
-from discord import Embed
+from discord import Embed, Intents
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -27,6 +27,7 @@ CD_KEYWORDS = os.getenv("CD_KEYWORDS")
 CD_AND_BOOK_CATEGORY_ID = os.getenv("CD_AND_BOOK_CATEGORY_ID")
 CD_KEYWORDS = CD_KEYWORDS.split(",")
 BOOK_KEYWORDS = BOOK_KEYWORDS.split(",")
+CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH")
 
 WEBSITE_URL = 'https://jp.mercari.com'
 NUMBER_CLASS = "number__6b270ca7"
@@ -37,7 +38,8 @@ SOLD_BANNER_CLASS = "sticker__a6f874a2"
 LI_CLASS = 'sc-bb7da013-1 bATOfv'
 
 # Initialize Discord Bot
-bot = commands.Bot(command_prefix="!!")
+intents = Intents(messages=True)
+bot = commands.Bot(command_prefix="!!", intents=intents)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -70,12 +72,15 @@ def construct_url(keyword, category_id=None) -> str:
         return f"{WEBSITE_URL}/search?keyword={keyword}&order=desc&sort=created_time&category_id={category_id}"
 
 def init_web_driver() -> webdriver.Chrome.__class__:
+
+    print(f"\nThe chromedriver binary is in : {CHROMEDRIVER_PATH}")
+
     chrome_options = Options()
     chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36")
-    binary_location = "./chromedriver.exe"
-    driver = webdriver.Chrome(executable_path=binary_location, options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options, executable_path=CHROMEDRIVER_PATH)
 
     return driver
 
