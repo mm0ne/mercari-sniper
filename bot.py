@@ -38,8 +38,7 @@ SOLD_BANNER_CLASS = "sticker__a6f874a2"
 LI_CLASS = 'sc-bb7da013-1 bATOfv'
 
 # Initialize Discord Bot
-intents = Intents(messages=True)
-bot = commands.Bot(command_prefix="!!", intents=intents)
+bot = commands.Bot(command_prefix="!")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
