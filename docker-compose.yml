@@ -4,4 +4,4 @@ services:
         build: .
         env_file:
             - .env
-        shm_size: 1g
+        shm_size: 300m
