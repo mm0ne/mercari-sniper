@@ -1,6 +1,4 @@
-discord.py==1.7.3
 selenium==4.1.0
 beautifulsoup4==4.10.0
 supabase-py
 python-dotenv
-chromedriver-autoinstaller==0.2.2
