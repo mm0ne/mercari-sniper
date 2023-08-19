@@ -96,10 +96,12 @@ def parse_new_data(soup, table_name : str) -> list:
     # Extract the data you need
     item_data = soup.find_all('li', class_=LI_CLASS)
     item_names = soup.find_all("span", class_=ITEM_NAME_CLASS)
+    item_data = item_data[::-1]
+    item_names = item_names[::-1]
     wrangled_data = []
     old_data = get_all_data_from_database(table_name)
 
-    for index, item in enumerate(item_data[::-1]):
+    for index, item in enumerate():
         product_link = item.find("a", class_=PRODUCT_LINK_CLASS)
         product_link = WEBSITE_URL + product_link.get("href", "#")
 
