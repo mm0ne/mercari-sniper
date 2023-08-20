@@ -1,6 +1,5 @@
 # mercari-sniper
 
-
 mercari-sniper is discord-integrated scraper bot to snipe certain items at fixed interval.
 - Uses [selenium](https://pypi.org/project/selenium/) with beautifulsoup to scrape trough dom parsing<br>
 - uses [discord.py](https://pypi.org/project/discord.py/) for discord bot integration
@@ -35,6 +34,10 @@ docker compose up --build -d
 ```
 python bot.py
 ```
+
+## Example
+
+![example](https://cdn.discordapp.com/attachments/1142120997940637931/1142682233862369291/image.png)
 
 ## Overall To Do:
 - [ ] Analyze deeper [mercari](https://jp.mercari.com) website bevahiour (dom and api calls)
