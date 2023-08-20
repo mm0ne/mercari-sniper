@@ -14,6 +14,12 @@ mercari-sniper is discord-integrated scraper bot to snipe certain items at fixed
 - docker
 - supabase project
 
+## Setting up the Discord
+- create your own application bot and add it to desired server. [see this](https://www.xda-developers.com/how-to-create-discord-bot/)
+- set up the roles, channel, etc as you wish
+- get channel_id(s) and user_id(s)
+- add those to your .env
+
 ## Running:
 
 ### docker
