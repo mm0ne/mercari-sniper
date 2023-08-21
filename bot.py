@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import os
 from dotenv import load_dotenv
 from supabase import create_client
+import time;
 
 load_dotenv()
 
@@ -45,10 +46,13 @@ bot = commands.Bot(command_prefix="!")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def scrape_info(keywords) -> None:
+async def start_scrape_info(keywords) -> None:
     info_channel = bot.get_channel(INFO_CHANNEL_ID)
-    info_channel.send(f"Scraping with keywords : {keywords}")
+    await info_channel.send(f"Scraping with keywords : {keywords}")
 
+async def end_scrape_info(duration) -> None:
+    info_channel = bot.get_channel(INFO_CHANNEL_ID)
+    await info_channel.send(f"Scraping done in  : {duration} seconds")
 
 def initialize_database():
     q = supabase.table(SUPABASE_TABLE_CD).select().limit(1).execute()
@@ -81,13 +85,13 @@ def init_web_driver() -> webdriver.Chrome.__class__:
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"
     )
     driver = webdriver.Chrome(options=chrome_options, executable_path=CHROMEDRIVER_PATH)
 
     return driver
-
 
 def scrape(driver, url_payload) -> None:
     driver.get(url_payload)
@@ -198,33 +202,41 @@ async def notify_new_item(channel_id, items) -> None:
 @tasks.loop(minutes=15)  # Run every 30 minutes
 async def snipe():
     # Initialize headless browser
-    driver = init_web_driver()
+    
     print(
         "\n=========================  browser has been set!  =========================\n"
     )
 
-    scrape_info(BOOK_KEYWORDS)
+    await start_scrape_info(BOOK_KEYWORDS)
+    start_time = time.time()
     for index, key in enumerate(BOOK_KEYWORDS):
-        # Load the website
+        
+        driver = init_web_driver()
         url_payload = construct_url(key)
         print(f"\nscraping with '{url_payload}' as payload\n")
         scrape(driver, url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_BOOK, index)
         await notify_new_item(channel_id=BOOK_CHANNEL_ID, items=data)
 
-    scrape_info(CD_KEYWORDS)
+    end_time = time.time()
+    await end_scrape_info(end_time - start_time)
+
+    await start_scrape_info(CD_KEYWORDS)
+    start_time = time.time()
     for index, key in enumerate(CD_KEYWORDS):
-        # Load the website
+        driver = init_web_driver()
         url_payload = construct_url(keyword=key, category_id=CD_AND_BOOK_CATEGORY_ID)
         print(f"\nscraping with '{url_payload}' as payload\n")
         scrape(driver, url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_CD, index)
         await notify_new_item(channel_id=CD_CHANNEL_ID, items=data)
-
-    # close the browser
-    driver.quit()
+    
+    end_time = time.time()
+    await end_scrape_info(end_time -start_time)
 
 
 @bot.event
