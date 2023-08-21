@@ -20,6 +20,7 @@ SUPABASE_TABLE_BOOK = os.getenv("SUPABASE_TABLE_BOOK")
 
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 USER_ID = int(os.getenv("USER_ID"))
+INFO_CHANNEL_ID=int(os.getenv("INFO_CHANNEL_ID"))
 BOOK_CHANNEL_ID = int(os.getenv("BOOK_CHANNEL_ID"))
 CD_CHANNEL_ID = int(os.getenv("CD_CHANNEL_ID"))
 BOOK_KEYWORDS = os.getenv("BOOK_KEYWORDS")
@@ -44,9 +45,9 @@ bot = commands.Bot(command_prefix="!")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def print_keywords(keywords) -> None:
-    print("\nscraping with these keywords :")
-    print(keywords)
+def scrape_info(keywords) -> None:
+    info_channel = bot.get_channel(INFO_CHANNEL_ID)
+    info_channel.send(f"Scraping with keywords : {keywords}")
 
 
 def initialize_database():
@@ -202,7 +203,7 @@ async def snipe():
         "\n=========================  browser has been set!  =========================\n"
     )
 
-    print_keywords(BOOK_KEYWORDS)
+    scrape_info(BOOK_KEYWORDS)
     for index, key in enumerate(BOOK_KEYWORDS):
         # Load the website
         url_payload = construct_url(key)
@@ -212,7 +213,7 @@ async def snipe():
         data = parse_new_data(soup, SUPABASE_TABLE_BOOK, index)
         await notify_new_item(channel_id=BOOK_CHANNEL_ID, items=data)
 
-    print_keywords(CD_KEYWORDS)
+    scrape_info(CD_KEYWORDS)
     for index, key in enumerate(CD_KEYWORDS):
         # Load the website
         url_payload = construct_url(keyword=key, category_id=CD_AND_BOOK_CATEGORY_ID)
