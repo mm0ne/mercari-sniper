@@ -1,6 +1,6 @@
 version: "3"
 services:
-    mercari-sniper:
+    bot:
         build: .
         env_file:
             - .env
