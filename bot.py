@@ -79,8 +79,6 @@ def construct_url(keyword, category_id=None) -> str:
 
 
 def init_web_driver() -> webdriver.Chrome.__class__:
-    print(f"\nThe chromedriver binary is in : {CHROMEDRIVER_PATH}")
-
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
@@ -93,12 +91,20 @@ def init_web_driver() -> webdriver.Chrome.__class__:
 
     return driver
 
-def scrape(driver, url_payload) -> None:
-    driver.get(url_payload)
-    # Wait until the specific <li> elements with the given class are present
-    wait = WebDriverWait(driver, 30)
-    wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, IMAGE_CLASS)))
 
+async def scrape(url_payload):
+    while True:
+        driver = init_web_driver()
+        try:
+            driver.get(url_payload)
+            # Wait until the specific <li> elements with the given class are present
+            wait = WebDriverWait(driver, 30)
+            wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, IMAGE_CLASS)))
+            break
+        except Exception as e:
+            driver.close()
+            driver.quit()
+    return driver
 
 def parse_new_data(soup, table_name: str, keyword_id: int) -> list:
     # Extract the data you need
@@ -202,7 +208,6 @@ async def notify_new_item(channel_id, items) -> None:
 @tasks.loop(minutes=15)  # Run every 30 minutes
 async def snipe():
     # Initialize headless browser
-    
     print(
         "\n=========================  browser has been set!  =========================\n"
     )
@@ -211,14 +216,15 @@ async def snipe():
     start_time = time.time()
     for index, key in enumerate(BOOK_KEYWORDS):
         
-        driver = init_web_driver()
         url_payload = construct_url(key)
         print(f"\nscraping with '{url_payload}' as payload\n")
-        scrape(driver, url_payload)
+        driver = await scrape(url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
         driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_BOOK, index)
         await notify_new_item(channel_id=BOOK_CHANNEL_ID, items=data)
+        driver.close()
+        driver.quit()
 
     end_time = time.time()
     await end_scrape_info(end_time - start_time)
@@ -226,17 +232,14 @@ async def snipe():
     await start_scrape_info(CD_KEYWORDS)
     start_time = time.time()
     for index, key in enumerate(CD_KEYWORDS):
-        driver = init_web_driver()
         url_payload = construct_url(keyword=key, category_id=CD_AND_BOOK_CATEGORY_ID)
         print(f"\nscraping with '{url_payload}' as payload\n")
-        scrape(driver, url_payload)
+        driver = await scrape(url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.close()
         driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_CD, index)
         await notify_new_item(channel_id=CD_CHANNEL_ID, items=data)
-    
-    end_time = time.time()
-    await end_scrape_info(end_time -start_time)
 
 
 @bot.event
