@@ -220,11 +220,10 @@ async def snipe():
         print(f"\nscraping with '{url_payload}' as payload\n")
         driver = await scrape(url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.close()
         driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_BOOK, index)
         await notify_new_item(channel_id=BOOK_CHANNEL_ID, items=data)
-        driver.close()
-        driver.quit()
 
     end_time = time.time()
     await end_scrape_info(end_time - start_time)
