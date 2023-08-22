@@ -92,7 +92,7 @@ def init_web_driver() -> webdriver.Chrome.__class__:
     return driver
 
 
-async def scrape(url_payload):
+def scrape(url_payload):
     while True:
         driver = init_web_driver()
         try:
@@ -218,9 +218,8 @@ async def snipe():
         
         url_payload = construct_url(key)
         print(f"\nscraping with '{url_payload}' as payload\n")
-        driver = await scrape(url_payload)
+        driver = scrape(url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        driver.close()
         driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_BOOK, index)
         await notify_new_item(channel_id=BOOK_CHANNEL_ID, items=data)
@@ -233,12 +232,14 @@ async def snipe():
     for index, key in enumerate(CD_KEYWORDS):
         url_payload = construct_url(keyword=key, category_id=CD_AND_BOOK_CATEGORY_ID)
         print(f"\nscraping with '{url_payload}' as payload\n")
-        driver = await scrape(url_payload)
+        driver = scrape(url_payload)
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        driver.close()
         driver.quit()
         data = parse_new_data(soup, SUPABASE_TABLE_CD, index)
         await notify_new_item(channel_id=CD_CHANNEL_ID, items=data)
+    end_time = time.time()
+    await end_scrape_info(end_time - start_time)
+
 
 
 @bot.event
