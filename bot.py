@@ -48,7 +48,12 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 async def start_scrape_info(keywords) -> None:
     info_channel = bot.get_channel(INFO_CHANNEL_ID)
-    await info_channel.send(f"Scraping with keywords : {keywords}")
+    
+    msg_template = ""
+    for key in keywords:
+        msg_template +=f"\n- {key}"
+
+    await info_channel.send(f"Scraping with keywords : {msg_template}\n")
 
 async def end_scrape_info(duration) -> None:
     info_channel = bot.get_channel(INFO_CHANNEL_ID)
