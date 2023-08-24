@@ -234,7 +234,7 @@ async def scrape_and_notify(
             await notify_new_item(channel_id=channel_ids[j], items=data)
 
 
-@tasks.loop(minutes=15)  # Run every 15 minutes
+@tasks.loop(minutes=30)  # Run every 15 minutes
 async def snipe():
     # Initialize headless browser
     print("\n=========================  Sniping! =========================\n")
