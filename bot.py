@@ -38,9 +38,9 @@ WEBSITE_URL = "https://jp.mercari.com"
 NUMBER_CLASS = "number__6b270ca7"
 ITEM_NAME_CLASS = "itemName__a6f874a2"
 IMAGE_CLASS = "imageContainer__f8ddf3a2"
-PRODUCT_LINK_CLASS = "sc-bb7da013-2 eFiPDm"
+PRODUCT_LINK_CLASS = "sc-4d8b8b2c-2 gqEUzT"
 SOLD_BANNER_CLASS = "sticker__a6f874a2"
-LI_CLASS = "sc-bb7da013-1 bATOfv"
+LI_CLASS = "sc-4d8b8b2c-1 jFYApS"
 QUERY_LIMIT = 200
 
 
@@ -126,14 +126,13 @@ def parse_new_data(soup, table_name: str, keyword_id: int) -> list:
     item_data = item_data[::-1]
     wrangled_data = []
     old_data = get_old_data_by_keyword_id(table_name, keyword_id)
-
+    
     for item in item_data:
         product_link = item.find("a", class_=PRODUCT_LINK_CLASS)
         product_link = WEBSITE_URL + product_link.get("href", "#")
 
         if item_already_exists(product_link, old_data):
             continue
-
         product_name = item.find("span", class_=ITEM_NAME_CLASS).text
         product_price = item.find("span", class_=NUMBER_CLASS).text
         product_price = product_price.replace(",", "")
